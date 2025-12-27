@@ -1,218 +1,81 @@
-# 🛒 Event-Driven Mall
+Markdown# 🛒 Event-Driven Mall (Janus Commerce)
 
-Arquitetura Event-Driven com **CQRS** e **Event Sourcing** usando Kafka, PostgreSQL e MongoDB.
+![Java](https://img.shields.io/badge/Java-17-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+![Clojure](https://img.shields.io/badge/Clojure-1.11-blue?style=for-the-badge&logo=clojure&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)
+![Kafka](https://img.shields.io/badge/Apache_Kafka-3.5-231F20?style=for-the-badge&logo=apache-kafka&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Postgres](https://img.shields.io/badge/PostgreSQL-15-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-6.0-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
 
-## 📐 Arquitetura
+> **Simulação de um ecossistema de varejo distribuído, focado em alta performance e desacoplamento através de Event-Driven Architecture (EDA), CQRS e Event Sourcing.**
 
-```
-┌─────────────┐    POST /orders     ┌──────────────┐
-│   React     │ ─────────────────► │  Command API │
-│  Frontend   │    202 Accepted     │ (Java/Spring)│
-└─────────────┘                     └──────┬───────┘
-       │                                   │
-       │ GET /orders/{id}                  │ Salva + Publica
-       │                                   ▼
-       │                           ┌──────────────┐
-       │                           │  PostgreSQL  │ (Event Store)
-       │                           └──────────────┘
-       │                                   │
-       │                                   ▼
-       │                           ┌──────────────┐
-       │                           │    Kafka     │ ◄──── orders
-       │                           │  (Event Bus) │
-       │                           └──────┬───────┘
-       │                                   │
-       │            ┌──────────────────────┼──────────────────────┐
-       │            │                      │                      │
-       │            ▼                      ▼                      ▼
-       │   ┌────────────────┐    ┌────────────────┐    ┌────────────────┐
-       │   │Inventory Worker│    │ Payment Worker │    │   Projector    │
-       │   │    (Java)      │    │   (Clojure)    │    │   (Clojure)    │
-       │   └───────┬────────┘    └───────┬────────┘    └───────┬────────┘
-       │           │                     │                     │
-       │           │ stock-reserved      │ payment-success     │
-       │           └─────────────────────┴─────────────────────┘
-       │                                                       │
-       │                                               Upsert  ▼
-       │                                           ┌──────────────┐
-       │                                           │   MongoDB    │ (Read Model)
-       │                                           └──────┬───────┘
-       │                                                  │
-       │                                                  ▼
-       │                                           ┌──────────────┐
-       └──────────────────────────────────────────►│  Query API   │
-                                                   │ (Java/Spring)│
-                                                   └──────────────┘
-```
+---
 
-## 🚀 Como Rodar
+## 📐 Arquitetura do Sistema
 
-### ✅ 0. Subir tudo com 1 clique (Windows)
+O projeto adota uma abordagem **poliglota e híbrida**, aproveitando a robustez e tipagem do **Java (Spring Boot)** para APIs de borda e regras de negócio críticas, combinada com a expressividade e imutabilidade funcional do **Clojure** para processamento de streams e projeção de dados.
 
-- **Start**: dê duplo clique em `run-all.cmd`
-- **Stop**: dê duplo clique em `stop-all.cmd`
+### Fluxo de Dados (CQRS)
+A arquitetura é estritamente dividida entre **Comando (Escrita)** e **Consulta (Leitura)**, utilizando o Apache Kafka como espinha dorsal para comunicação assíncrona.
 
-Isso vai:
-- subir a infraestrutura com `docker compose`
-- abrir **1 terminal por serviço** (APIs, workers e frontend)
-- criar um drive `SUBST` (ex: `M:\`) para evitar problemas de caminho com acento no Lein/JVM no Windows
+![Arquitetura do Projeto](arquitetura_projeto_pedidos.jpg)
 
-### 1. Subir Infraestrutura (Docker)
+1.  **Command Side (Write):** A `Command API` recebe a intenção do usuário, valida e persiste o evento inicial no PostgreSQL (Source of Truth).
+2.  **Event Bus:** O evento é publicado no Kafka, onde múltiplos consumidores reagem independentemente.
+3.  **Workers:**
+    * *Inventory Worker (Java):* Garante integridade de estoque.
+    * *Payment Worker (Clojure):* Processa transações financeiras.
+    * *Projector Worker (Clojure):* Escuta todos os eventos e materializa uma "view" otimizada no MongoDB.
+4.  **Query Side (Read):** A `Query API` lê os dados prontos do MongoDB, oferecendo respostas com baixíssima latência para o Frontend, sem onerar o banco de escrita.
+
+---
+
+## 🚀 Como Rodar o Projeto
+
+### Pré-requisitos
+* Docker & Docker Compose
+* Java JDK 17+
+* Leiningen (para Clojure)
+* Node.js (para Frontend)
+
+### ⚡ Quick Start (Windows)
+
+Para facilitar a execução em ambiente Windows (evitando problemas de path/encoding com JVM/Lein), utilize os scripts automatizados na raiz:
+
+* 🟢 **Start:** Duplo clique em `run-all.cmd` (Sobe Docker e abre terminais para cada serviço).
+* 🔴 **Stop:** Duplo clique em `stop-all.cmd`.
+
+### 👣 Execução Manual (Passo a Passo)
+
+#### 1. Infraestrutura (Docker)
+Suba os containers de banco de dados e message broker:
 ```bash
-cd event-driven-mall
 docker compose up -d
-```
+Kafka UI: http://localhost:8090Postgres: Porta 5433Mongo: Porta 270182. Serviços Java (Spring Boot)Em terminais separados, inicie as APIs e o Worker de Estoque:Bash# Terminal 1: Command API (Porta 8080)
+cd services/command-api && ./mvnw spring-boot:run
 
-Serviços disponíveis:
-- **Kafka UI**: http://localhost:8090
-- **PostgreSQL**: localhost:5433
-- **MongoDB**: localhost:27018
+# Terminal 2: Inventory Worker (Porta 8082)
+cd services/inventory-worker && ./mvnw spring-boot:run
 
-### 2. Rodar os Serviços Java
+# Terminal 3: Query API (Porta 8081)
+cd services/query-api && ./mvnw spring-boot:run
+3. Workers ClojureEm novos terminais, inicie os processadores funcionais:Bash# Terminal 4: Payment Worker
+cd services/payment-worker && lein run!
 
-**Terminal 1 - Command API (porta 8080):**
-```bash
-cd services/command-api
-./mvnw spring-boot:run
-```
-
-**Terminal 2 - Inventory Worker (porta 8082):**
-```bash
-cd services/inventory-worker
-./mvnw spring-boot:run
-```
-
-**Terminal 3 - Query API (porta 8081):**
-```bash
-cd services/query-api
-./mvnw spring-boot:run
-```
-
-### 3. Rodar os Workers Clojure
-
-**Terminal 4 - Payment Worker:**
-```bash
-cd services/payment-worker
-lein trampoline run
-# ou: lein run!
-```
-
-**Terminal 5 - Projection Worker:**
-```bash
-cd services/consulta-worker
-lein trampoline run
-# ou: lein run!
-```
-
-> Se no Windows aparecer `Could not find or load main class clojure.main`,
-> garanta que o Leiningen está atualizado e que as dependências foram baixadas
-> (`lein deps`). Este repo configura `:local-repo "C:/m2"` nos projetos Clojure
-> para evitar problemas com caminhos com acento.
->
-> Se aparecer erro com `form-init...clj` em `AppData\\Local\\Temp` (caminho corrompido por acento),
-> crie `C:\\temp` e rode os workers com TEMP/TMP apontando para lá.
->
-> Se o Lein ainda não achar o namespace (`Could not locate payment_worker/core.clj on classpath`),
-> é quase sempre **caminho com acento** no diretório do projeto. No Windows, rode os workers por
-> um caminho “ASCII” usando `subst`:
->
-> ```powershell
-> subst M: "C:\Users\João Pedro\Documents\PROJETOS LEGÍTIMOS"
-> cd M:\event-driven-mall\services\payment-worker
-> $env:TEMP="C:\temp"; $env:TMP="C:\temp"
-> lein deps
-> lein run!
-> ```
-
-### 4. Rodar o Frontend React
-
-**Terminal 6 - Frontend (porta 3000):**
-```bash
+# Terminal 5: Projector Worker
+cd services/consulta-worker && lein run!
+Nota para usuários Windows: Se houver erro de class path ou temp file no Clojure, use o comando subst para mapear o projeto em um drive virtual (ex: M:) e configure as variáveis de ambiente TEMP para um caminho curto (ex: C:\temp).4. Frontend (React)Bash# Terminal 6: Frontend (Porta 3000)
 cd services/frontend
-npm install
-npm run dev
-```
+npm install && npm run dev
+🛠️ Tech Stack DetalhadaComponenteTecnologiaResponsabilidadeCommand APIJava 17, Spring Boot 3Porta de entrada de escritas, Validação, Persistência Transactional (Postgres).Inventory WorkerJava 17, Spring KafkaRegras de negócio de estoque, Consistência de dados.Payment WorkerClojure 1.11Integração com Gateways, Lógica funcional de pagamentos.Projector WorkerClojure 1.11, MongerTransformação de eventos em documentos de leitura (ETL em tempo real).Query APIJava 17, Spring Data MongoLeitura rápida de dados desnormalizados.FrontendReact 18, Vite, TailwindInterface do usuário reativa.InfraDocker, Kafka, ZookeeperOrquestração e Mensageria.📡 Endpoints PrincipaisCommand API (Escrita - 8080)HTTPPOST /orders
+Content-Type: application/json
 
-## 📡 Endpoints
-
-### Command API (8080) - Escrita
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| POST | `/orders` | Cria novo pedido |
-
-### Query API (8081) - Leitura
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| GET | `/orders/{id}` | Busca pedido por ID |
-| GET | `/orders` | Lista todos os pedidos |
-| GET | `/orders/user/{userId}` | Pedidos de um usuário |
-| GET | `/orders/status/{status}` | Pedidos por status |
-
-## 📨 Exemplo de Request
-
-```bash
-curl -X POST http://localhost:8080/orders \
-  -H "Content-Type: application/json" \
-  -d '{
-    "userId": "usuario_123",
-    "totalAmount": 199.90,
-    "items": ["Teclado Mecânico", "Mouse Gamer"]
-  }'
-```
-
-## 🔄 Fluxo de Eventos
-
-1. **OrderCreated** → Tópico `orders`
-2. **StockReserved** → Tópico `stock-reserved`
-3. **PaymentSuccess** → Tópico `payment-success`
-
-## 🗃️ Bancos de Dados
-
-- **PostgreSQL (Event Store)**: Armazena todos os eventos (append-only)
-- **MongoDB (Read Model)**: Projeções otimizadas para consulta
-
-## 📁 Estrutura de Pastas
-
-```
-event-driven-mall/
-├── .gitignore
-├── docker-compose.yml
-├── README.md
-└── services/
-    ├── command-api/        # Java Spring Boot (Comandos)
-    ├── query-api/          # Java Spring Boot (Consultas)
-    ├── inventory-worker/   # Java Spring Boot (Estoque)
-    ├── payment-worker/     # Clojure (Pagamento)
-    ├── consulta-worker/    # Clojure (Projection Worker → MongoDB)
-    │   ├── src/consulta_worker/
-    │   │   ├── config.clj           # Configurações
-    │   │   ├── core.clj             # Orquestração principal
-    │   │   ├── kafka/               # Lógica Kafka
-    │   │   │   └── consumer.clj
-    │   │   ├── database/            # Camada de persistência
-    │   │   │   ├── connection.clj
-    │   │   │   └── repository.clj
-    │   │   ├── projections/         # Lógica de projeções
-    │   │   │   └── order_projection.clj
-    │   │   ├── handlers/            # Roteamento de eventos
-    │   │   │   └── event_handler.clj
-    │   │   └── utils/               # Utilitários
-    │   │       ├── time.clj
-    │   │       └── json.clj
-    │   └── project.clj
-    └── frontend/           # React + Vite
-```
-
-## 🛠️ Tecnologias
-
-| Serviço | Stack |
-|---------|-------|
-| Command API | Java 17, Spring Boot 4, Kafka, PostgreSQL |
-| Query API | Java 17, Spring Boot 4, MongoDB |
-| Inventory Worker | Java 17, Spring Boot 4, Kafka |
-| Payment Worker | Clojure 1.11, Kafka Clients |
-| Projector Worker | Clojure 1.11, Kafka Clients, Monger (MongoDB) |
-| Frontend | React 18, Vite 5 |
-| Message Broker | Apache Kafka + Zookeeper |
-| Databases | PostgreSQL 15, MongoDB 6 |
-
+{
+  "userId": "user_123",
+  "totalAmount": 1500.00,
+  "items": ["TV 50 Polegadas", "Suporte de Parede"]
+}
+Query API (Leitura - 8081)HTTPGET /orders/{id}        # Detalhes do pedido (Status atualizado em tempo real)
+GET /orders/user/{id}   # Histórico de pedidos do usuário
+🔮 Roadmap & Melhorias Futuras[ ] Implementação de Saga Pattern para transações distribuídas (Rollback de estoque em caso de falha no pagamento).[ ] Migração para Kubernetes (K8s) com Helm Charts.[ ] Adição de Dead Letter Queues (DLQ) para resiliência a falhas.[ ] Monitoramento com Prometheus e Grafana.
