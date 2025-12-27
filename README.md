@@ -1,39 +1,45 @@
-Markdown# 🛒 Event-Driven Mall (Janus Commerce)
+# ☯️ Duality Store
 
-![Java](https://img.shields.io/badge/Java-17-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
-![Clojure](https://img.shields.io/badge/Clojure-1.11-blue?style=for-the-badge&logo=clojure&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)
-![Kafka](https://img.shields.io/badge/Apache_Kafka-3.5-231F20?style=for-the-badge&logo=apache-kafka&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![Postgres](https://img.shields.io/badge/PostgreSQL-15-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
-![MongoDB](https://img.shields.io/badge/MongoDB-6.0-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
+![Java](https://img.shields.io/badge/Java-17-ED8B00?style=for-the-badge\&logo=openjdk\&logoColor=white)
+![Clojure](https://img.shields.io/badge/Clojure-1.11-blue?style=for-the-badge\&logo=clojure\&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0-6DB33F?style=for-the-badge\&logo=spring-boot\&logoColor=white)
+![Kafka](https://img.shields.io/badge/Apache_Kafka-3.5-231F20?style=for-the-badge\&logo=apache-kafka\&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge\&logo=docker\&logoColor=white)
+![Postgres](https://img.shields.io/badge/PostgreSQL-15-4169E1?style=for-the-badge\&logo=postgresql\&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-6.0-47A248?style=for-the-badge\&logo=mongodb\&logoColor=white)
 
-> **Simulação de um ecossistema de varejo distribuído, focado em alta performance e desacoplamento através de Event-Driven Architecture (EDA), CQRS e Event Sourcing.**
+> **Uma simulação de e-commerce distribuída explorando a dualidade entre consistência transacional e performance de leitura através de CQRS, Event Sourcing e Arquitetura Poliglota.**
 
 ---
 
-## 📐 Arquitetura do Sistema
+## 📐 A Arquitetura da Dualidade
 
-O projeto adota uma abordagem **poliglota e híbrida**, aproveitando a robustez e tipagem do **Java (Spring Boot)** para APIs de borda e regras de negócio críticas, combinada com a expressividade e imutabilidade funcional do **Clojure** para processamento de streams e projeção de dados.
+O **Duality Store** foi projetado para demonstrar como paradigmas diferentes podem coexistir para resolver problemas específicos. A arquitetura se baseia em dois pilares principais de separação:
 
-### Fluxo de Dados (CQRS)
-A arquitetura é estritamente dividida entre **Comando (Escrita)** e **Consulta (Leitura)**, utilizando o Apache Kafka como espinha dorsal para comunicação assíncrona.
+1. **Dualidade de Dados (CQRS):** Separação estrita entre o modelo de escrita (Command/Postgres) e o modelo de leitura (Query/MongoDB).
+2. **Dualidade de Linguagem:** Uso da robustez do **Java** para regras de negócio e APIs, combinado com a expressividade funcional do **Clojure** para processamento de streams e projeções.
+
+### Diagrama do Fluxo
 
 ![Arquitetura do Projeto](arquitetura_projeto_pedidos.jpg)
 
-1.  **Command Side (Write):** A `Command API` recebe a intenção do usuário, valida e persiste o evento inicial no PostgreSQL (Source of Truth).
-2.  **Event Bus:** O evento é publicado no Kafka, onde múltiplos consumidores reagem independentemente.
-3.  **Workers:**
-    * *Inventory Worker (Java):* Garante integridade de estoque.
-    * *Payment Worker (Clojure):* Processa transações financeiras.
-    * *Projector Worker (Clojure):* Escuta todos os eventos e materializa uma "view" otimizada no MongoDB.
-4.  **Query Side (Read):** A `Query API` lê os dados prontos do MongoDB, oferecendo respostas com baixíssima latência para o Frontend, sem onerar o banco de escrita.
+### Componentes e Responsabilidades
+
+* **Command API (Java):** O "lado esquerdo" da dualidade. Recebe intenções de compra, valida regras de domínio e persiste a verdade absoluta no PostgreSQL.
+* **Event Bus (Kafka):** A espinha dorsal que desacopla os sistemas, permitindo que a escrita e a leitura evoluam em ritmos diferentes.
+* **Workers Especializados:**
+
+  * **Inventory Worker (Java):** Consistência forte para controle de estoque.
+  * **Payment Worker (Clojure):** Integração funcional e assíncrona.
+  * **Projector Worker (Clojure):** O "tradutor" da dualidade. Escuta eventos de negócio e materializa visões otimizadas no MongoDB.
+* **Query API (Java):** O "lado direito" da dualidade. Entrega dados prontos para consumo imediato pelo Frontend, sem processamento pesado.
 
 ---
 
 ## 🚀 Como Rodar o Projeto
 
 ### Pré-requisitos
+
 * Docker & Docker Compose
 * Java JDK 17+
 * Leiningen (para Clojure)
@@ -41,41 +47,118 @@ A arquitetura é estritamente dividida entre **Comando (Escrita)** e **Consulta 
 
 ### ⚡ Quick Start (Windows)
 
-Para facilitar a execução em ambiente Windows (evitando problemas de path/encoding com JVM/Lein), utilize os scripts automatizados na raiz:
+Para facilitar a execução em ambiente Windows e evitar conflitos de variáveis de ambiente:
 
-* 🟢 **Start:** Duplo clique em `run-all.cmd` (Sobe Docker e abre terminais para cada serviço).
-* 🔴 **Stop:** Duplo clique em `stop-all.cmd`.
+* 🟢 **Start:** Execute o script `run-all.cmd` (sobe a infraestrutura e abre terminais para cada serviço).
+* 🔴 **Stop:** Execute o script `stop-all.cmd`.
 
 ### 👣 Execução Manual (Passo a Passo)
 
 #### 1. Infraestrutura (Docker)
-Suba os containers de banco de dados e message broker:
+
 ```bash
 docker compose up -d
-Kafka UI: http://localhost:8090Postgres: Porta 5433Mongo: Porta 270182. Serviços Java (Spring Boot)Em terminais separados, inicie as APIs e o Worker de Estoque:Bash# Terminal 1: Command API (Porta 8080)
-cd services/command-api && ./mvnw spring-boot:run
+```
 
+* Kafka UI: [http://localhost:8090](http://localhost:8090)
+* Postgres: Porta 5433
+* MongoDB: Porta 27018
+
+#### 2. Serviços Java (Spring Boot)
+
+Em terminais separados:
+
+```bash
+# Terminal 1: Command API (Porta 8080)
+cd services/command-api && ./mvnw spring-boot:run
+```
+
+```bash
 # Terminal 2: Inventory Worker (Porta 8082)
 cd services/inventory-worker && ./mvnw spring-boot:run
+```
 
+```bash
 # Terminal 3: Query API (Porta 8081)
 cd services/query-api && ./mvnw spring-boot:run
-3. Workers ClojureEm novos terminais, inicie os processadores funcionais:Bash# Terminal 4: Payment Worker
-cd services/payment-worker && lein run!
+```
 
+#### 3. Workers Clojure
+
+Em novos terminais:
+
+```bash
+# Terminal 4: Payment Worker
+cd services/payment-worker && lein run
+```
+
+```bash
 # Terminal 5: Projector Worker
-cd services/consulta-worker && lein run!
-Nota para usuários Windows: Se houver erro de class path ou temp file no Clojure, use o comando subst para mapear o projeto em um drive virtual (ex: M:) e configure as variáveis de ambiente TEMP para um caminho curto (ex: C:\temp).4. Frontend (React)Bash# Terminal 6: Frontend (Porta 3000)
+cd services/consulta-worker && lein run
+```
+
+> **Dica:** Se estiver no Windows e tiver problemas com caminhos longos ou acentos no Leiningen, use o comando:
+>
+> ```bash
+> subst M: "C:\\Caminho\\Do\\Projeto"
+> ```
+>
+> E rode o projeto a partir do drive virtual `M:`.
+
+#### 4. Frontend (React)
+
+```bash
+# Terminal 6: Frontend (Porta 3000)
 cd services/frontend
 npm install && npm run dev
-🛠️ Tech Stack DetalhadaComponenteTecnologiaResponsabilidadeCommand APIJava 17, Spring Boot 3Porta de entrada de escritas, Validação, Persistência Transactional (Postgres).Inventory WorkerJava 17, Spring KafkaRegras de negócio de estoque, Consistência de dados.Payment WorkerClojure 1.11Integração com Gateways, Lógica funcional de pagamentos.Projector WorkerClojure 1.11, MongerTransformação de eventos em documentos de leitura (ETL em tempo real).Query APIJava 17, Spring Data MongoLeitura rápida de dados desnormalizados.FrontendReact 18, Vite, TailwindInterface do usuário reativa.InfraDocker, Kafka, ZookeeperOrquestração e Mensageria.📡 Endpoints PrincipaisCommand API (Escrita - 8080)HTTPPOST /orders
+```
+
+---
+
+## 🛠️ Tech Stack
+
+| Componente       | Tecnologia                 | Papel na Dualidade                                                    |
+| ---------------- | -------------------------- | --------------------------------------------------------------------- |
+| Command API      | Java 17, Spring Boot 3     | Escrita: Segurança, Tipagem Forte, Transações ACID                    |
+| Inventory Worker | Java 17, Spring Kafka      | Processamento: Regras de Negócio Críticas                             |
+| Payment Worker   | Clojure 1.11               | Processamento: Imutabilidade, Tratamento de Dados Funcional           |
+| Projector Worker | Clojure 1.11, Monger       | Projeção: Transformação de Evento → Documento (ETL)                   |
+| Query API        | Java 17, Spring Data Mongo | Leitura: Alta Disponibilidade, Baixa Latência                         |
+| Storage          | PostgreSQL & MongoDB       | Persistência: Relacional (Normalizado) vs Documental (Desnormalizado) |
+
+---
+
+## 📡 Endpoints Principais
+
+### Command API (Escrita — Porta 8080)
+
+```http
+POST /orders
 Content-Type: application/json
 
 {
   "userId": "user_123",
   "totalAmount": 1500.00,
-  "items": ["TV 50 Polegadas", "Suporte de Parede"]
+  "items": ["Monitor Ultrawide", "Suporte Articulado"]
 }
-Query API (Leitura - 8081)HTTPGET /orders/{id}        # Detalhes do pedido (Status atualizado em tempo real)
-GET /orders/user/{id}   # Histórico de pedidos do usuário
-🔮 Roadmap & Melhorias Futuras[ ] Implementação de Saga Pattern para transações distribuídas (Rollback de estoque em caso de falha no pagamento).[ ] Migração para Kubernetes (K8s) com Helm Charts.[ ] Adição de Dead Letter Queues (DLQ) para resiliência a falhas.[ ] Monitoramento com Prometheus e Grafana.
+```
+
+### Query API (Leitura — Porta 8081)
+
+```http
+GET /orders/{id}        # Status em tempo real (atualizado via Eventual Consistency)
+GET /orders/user/{id}   # Histórico completo do usuário
+```
+
+---
+
+## 🔮 Roadmap
+
+* [ ] Implementação de **Saga Pattern** (orquestração de falhas distribuídas).
+* [ ] Adição de **WebSocket** no Frontend para atualização de status em tempo real.
+* [ ] Containerização completa para deploy em **Kubernetes**.
+* [ ] Testes de carga comparando a latência de Escrita vs. Leitura.
+
+---
+
+**Autor:** Joao Pedro Hornos
