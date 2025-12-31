@@ -25,8 +25,8 @@ target/
 .nrepl-port
 .nrepl-history
 .rebel_readline_history
-pom.xml
-pom.xml.asc
+# NOTA: pom.xml NÃO deve ser ignorado - é essencial para projetos Maven
+# pom.xml.asc (assinaturas) pode ser ignorado se necessário
 *.iml
 
 # ============================================================================

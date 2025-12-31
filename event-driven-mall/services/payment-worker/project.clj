@@ -20,23 +20,24 @@
                  [org.clojure/clojure "1.11.1"]
 
                  ;; 2. Apache Kafka (Cliente Java Oficial)
-                 ;; Fundamental para ler 'StockReserved' e publicar 'PaymentSuccess'
                  [org.apache.kafka/kafka-clients "3.5.1"]
 
                  ;; 3. JSON (Cheshire)
-                 ;; Para processar os payloads dos eventos
                  [cheshire "5.11.0"]
 
                  ;; 4. Cliente HTTP (clj-http)
-                 ;; Adicionado para simular chamadas a gateways de pagamento (Stripe/PayPal)
                  [clj-http "3.12.3"]
 
-                 ;; 5. Logging (Kafka 3.5.x usa SLF4J 1.7.x → logback 1.2.x)
+                 ;; 5. Logging
                  [org.clojure/tools.logging "1.2.4"]
-                 [ch.qos.logback/logback-classic "1.2.13"]]
+                 [ch.qos.logback/logback-classic "1.2.13"]
+
+                 ;; 6. JDBC para carteira/saldo em Postgres
+                 [org.clojure/java.jdbc "0.7.12"]
+                 [org.postgresql/postgresql "42.6.0"]]
 
   :main ^:skip-aot payment-worker.core
-  
+
   :aliases {"run!" ["trampoline" "run"]}
 
   :target-path "target/%s"

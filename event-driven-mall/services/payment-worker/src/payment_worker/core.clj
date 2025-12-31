@@ -1,7 +1,8 @@
 (ns payment-worker.core
-  "Worker de Pagamento: Escuta 'stock-reserved' e publica 'payment-success'"
+  "Worker de Pagamento: Escuta 'stock-reserved' e publica pagamento sucesso/falha considerando saldo"
   (:require [clojure.tools.logging :as log]
-            [cheshire.core :as json])
+            [cheshire.core :as json]
+            [payment-worker.db :as db])
   (:import [org.apache.kafka.clients.consumer KafkaConsumer ConsumerConfig]
            [org.apache.kafka.clients.producer KafkaProducer ProducerConfig ProducerRecord]
            [org.apache.kafka.common.serialization StringSerializer StringDeserializer]
@@ -17,7 +18,8 @@
   {:bootstrap-servers "localhost:9092"
    :consumer-group    "payment-group"
    :input-topic       "stock-reserved"
-   :output-topic      "payment-success"})
+   :output-topic      "payment-success"
+   :failed-topic      "payment-failed"})
 
 (defn consumer-props []
   (doto (Properties.)
@@ -34,22 +36,32 @@
     (.put ProducerConfig/VALUE_SERIALIZER_CLASS_CONFIG StringSerializer)))
 
 ;; ============================================================================
-;; Lógica de Pagamento (Simulada)
+;; Lógica de Pagamento com saldo
 ;; ============================================================================
 
 (defn process-payment
-  "Simula processamento de pagamento com gateway externo"
+  "Processa pagamento: debita saldo se houver fundos; caso contrário, gera falha."
   [stock-event]
-  (log/info "💳 [Payment] Processando pagamento para pedido:" (:orderId stock-event))
-  
-  ;; Simula latência de gateway (Stripe/PayPal)
-  (Thread/sleep 300)
-  
-  ;; Retorna evento de sucesso
-  {:orderId      (:orderId stock-event)
-   :status       "PAYMENT_SUCCESS"
-   :paymentId    (str (UUID/randomUUID))
-   :processedAt  (str (java.time.Instant/now))})
+  (let [user-id (:userId stock-event)
+        amount  (bigdec (or (:totalAmount stock-event) 0))]
+    (db/ensure-wallet-table!)
+    (let [{:keys [status balance]} (db/charge! user-id amount)]
+      (if (= status :ok)
+        {:type :success
+         :event {:orderId     (:orderId stock-event)
+                 :status      "PAYMENT_SUCCESS"
+                 :paymentId   (str (UUID/randomUUID))
+                 :userId      user-id
+                 :totalAmount amount
+                 :balanceAfter balance
+                 :processedAt (str (java.time.Instant/now))}}
+        {:type :failed
+         :event {:orderId     (:orderId stock-event)
+                 :status      "PAYMENT_FAILED"
+                 :userId      user-id
+                 :totalAmount amount
+                 :reason      "Saldo insuficiente"
+                 :processedAt (str (java.time.Instant/now))}}))))
 
 ;; ============================================================================
 ;; Kafka Consumer/Producer
@@ -58,28 +70,28 @@
 (defn start-consumer! []
   (let [consumer (KafkaConsumer. (consumer-props))
         producer (KafkaProducer. (producer-props))]
-    
+
     (.subscribe consumer [(:input-topic kafka-config)])
-    (log/info "🚀 [Payment Worker] Iniciado! Escutando:" (:input-topic kafka-config))
-    
+    (log/info "[Payment Worker] Iniciado! Escutando:" (:input-topic kafka-config))
+
     (try
       (while true
         (let [records (.poll consumer (Duration/ofMillis 1000))]
           (doseq [record records]
             (try
               (let [stock-event (json/parse-string (.value record) true)
-                    payment-result (process-payment stock-event)
-                    output-record (ProducerRecord. 
-                                    (:output-topic kafka-config)
-                                    (:orderId stock-event)
-                                    (json/generate-string payment-result))]
-                
+                    {:keys [type event]} (process-payment stock-event)
+                    topic (if (= type :success) (:output-topic kafka-config) (:failed-topic kafka-config))
+                    output-record (ProducerRecord.
+                                   topic
+                                   (:orderId stock-event)
+                                   (json/generate-string event))]
                 (.send producer output-record)
-                (log/info "✅ [Payment] Pagamento aprovado! Pedido:" (:orderId stock-event)))
-              
+                (log/info "[Payment] Resultado para pedido {}: {}", (:orderId stock-event) (:status event)))
+
               (catch Exception e
-                (log/error "❌ [Payment] Erro ao processar:" (.getMessage e)))))))
-      
+                (log/error "[Payment] Erro ao processar:" (.getMessage e)))))))
+
       (finally
         (.close consumer)
         (.close producer)))))
@@ -90,8 +102,8 @@
 
 (defn -main
   "Ponto de entrada do Payment Worker"
-  [& args]
-  (log/info "═══════════════════════════════════════════════════")
-  (log/info "       💳 PAYMENT WORKER - Event-Driven Mall")
-  (log/info "═══════════════════════════════════════════════════")
+  [& _]
+  (log/info "====================================")
+  (log/info "       PAYMENT WORKER - Event-Driven Mall")
+  (log/info "====================================")
   (start-consumer!))

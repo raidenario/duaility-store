@@ -11,7 +11,7 @@
 (def kafka-config
   {:bootstrap-servers "localhost:9092"
    :consumer-group    "projector-group"
-   :topics            ["orders" "stock-reserved" "payment-success"]
+   :topics            ["orders" "stock-reserved" "payment-success" "payment-failed" "products"]
    :poll-timeout-ms   1000})
 
 ;; ============================================================================
@@ -24,7 +24,8 @@
    :db         "event_store_db"
    :username   "admin"
    :password   "password"
-   :collection "orders"})
+   :collections {:orders "orders"
+                 :products "products"}})
 
 ;; ============================================================================
 ;; Propriedades do Kafka Consumer

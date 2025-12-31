@@ -1,6 +1,7 @@
 (ns consulta-worker.handlers.event-handler
   "Router de eventos - direciona cada evento para sua projeção correspondente"
   (:require [consulta-worker.projections.order-projection :as order-proj]
+            [consulta-worker.projections.product-projection :as product-proj]
             [clojure.tools.logging :as log]))
 
 ;; ============================================================================
@@ -17,18 +18,23 @@
 
 (defmethod handle-event "orders"
   [db _ event]
-  (log/debug "📨 Processando evento: orders")
+  (log/debug "[Projector] Processando evento: orders")
   (order-proj/project-order-created! db event))
 
 (defmethod handle-event "stock-reserved"
   [db _ event]
-  (log/debug "📨 Processando evento: stock-reserved")
+  (log/debug "[Projector] Processando evento: stock-reserved")
   (order-proj/project-stock-reserved! db event))
 
 (defmethod handle-event "payment-success"
   [db _ event]
-  (log/debug "📨 Processando evento: payment-success")
+  (log/debug "[Projector] Processando evento: payment-success")
   (order-proj/project-payment-success! db event))
+
+(defmethod handle-event "products"
+  [db _ event]
+  (log/debug "[Projector] Processando evento: products")
+  (product-proj/project-product-created! db event))
 
 ;; ============================================================================
 ;; Eventos Futuros (Preparados para Expansão)
@@ -36,12 +42,12 @@
 
 (defmethod handle-event "payment-failed"
   [db _ event]
-  (log/debug "📨 Processando evento: payment-failed")
+  (log/debug "[Projector] Processando evento: payment-failed")
   (order-proj/project-payment-failed! db event))
 
 (defmethod handle-event "order-cancelled"
   [db _ event]
-  (log/debug "📨 Processando evento: order-cancelled")
+  (log/debug "[Projector] Processando evento: order-cancelled")
   (order-proj/project-order-cancelled! db event))
 
 ;; ============================================================================
@@ -50,7 +56,7 @@
 
 (defmethod handle-event :default
   [_ topic _]
-  (log/warn "⚠️  Tópico desconhecido recebido:" topic)
+  (log/warn "[Projector] Tópico desconhecido recebido:" topic)
   (log/warn "   Nenhuma projeção configurada para este tópico"))
 
 ;; ============================================================================
@@ -63,8 +69,7 @@
   (try
     (handle-event db topic event)
     (catch Exception e
-      (log/error "❌ Erro ao processar evento do tópico:" topic)
+      (log/error "Erro ao processar evento do tópico:" topic)
       (log/error "   Mensagem de erro:" (.getMessage e))
       (log/error "   Evento:" event)
       (log/debug "   Stack trace:" e))))
-

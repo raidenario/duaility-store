@@ -18,13 +18,13 @@
 (defn connect!
   "Estabelece conexão com o MongoDB e retorna conn e db"
   []
-  (log/info "🔌 Conectando ao MongoDB...")
+  (log/info "🚀 Conectando ao MongoDB...")
   (try
     (let [uri (build-connection-uri)
           {:keys [conn db]} (mg/connect-via-uri uri)]
       (log/info "✅ MongoDB conectado com sucesso!")
       (log/info "   Database:" (:db config/mongo-config))
-      (log/info "   Collection:" (:collection config/mongo-config))
+      (log/info "   Collections:" (:collections config/mongo-config))
       {:conn conn :db db})
     (catch Exception e
       (log/error "❌ Erro ao conectar no MongoDB:" (.getMessage e))
@@ -34,7 +34,7 @@
   "Fecha a conexão com o MongoDB"
   [conn]
   (when conn
-    (log/info "🔌 Fechando conexão com MongoDB...")
+    (log/info "🧊 Fechando conexão com MongoDB...")
     (mg/disconnect conn)
     (log/info "✅ MongoDB desconectado")))
 
@@ -46,4 +46,3 @@
     true
     (catch Exception _
       false)))
-

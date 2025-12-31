@@ -26,7 +26,9 @@ public class InventoryListener {
         StockReservedEvent reservedEvent = new StockReservedEvent(
             event.getOrderId(),
             "RESERVED",
-            event.getItems().size()
+            event.getItems().size(),
+            event.getUserId(),
+            event.getTotalAmount()
         );
         kafkaTemplate.send("stock-reserved", reservedEvent);
         log.info("📦 [Inventory] Estoque reservado para Pedido: {}", event.getOrderId());
