@@ -8,20 +8,35 @@ import './App.css'
 const COMMAND_API = 'http://localhost:8080'
 const QUERY_API = 'http://localhost:8081'
 
-const productTypes = ['Periférico', 'Eletrônico', 'Acessório']
+const productTypes = ['Mouses', 'Teclados', 'Mousepads', 'Monitores']
 const buyerUsers = ['comprador-1', 'comprador-2']
 const adminUser = 'admin-1'
 
+// Layout baseado na arquitetura real (esquerda → direita, top → bottom)
 const flowNodes = {
-  frontend: { x: 14, y: 55, label: 'Frontend', tag: 'React' },
-  command: { x: 30, y: 40, label: 'Command API', tag: 'Java' },
-  kafka: { x: 48, y: 30, label: 'Kafka', tag: 'Event Bus' },
-  inventory: { x: 78, y: 26, label: 'Inventory Worker', tag: 'Java' },
-  payment: { x: 78, y: 48, label: 'Payment Worker', tag: 'Clojure' },
-  projector: { x: 58, y: 60, label: 'Projector Worker', tag: 'Clojure' },
-  mongo: { x: 78, y: 70, label: 'MongoDB', tag: 'Read Model' },
-  query: { x: 36, y: 70, label: 'Query API', tag: 'Java' },
-  client: { x: 52, y: 82, label: 'Storefront', tag: 'React Query' },
+  // Coluna 1: Frontend
+  frontend: { x: 10, y: 50, label: 'Frontend', tag: 'React' },
+  
+  // Coluna 2: Command Side
+  command: { x: 28, y: 30, label: 'Command API', tag: 'Java' },
+  postgres: { x: 28, y: 50, label: 'PostgreSQL', tag: 'Event Store' },
+  
+  // Coluna 3: Event Bus (Centro)
+  kafka: { x: 50, y: 40, label: 'Kafka', tag: 'Event Bus' },
+  
+  // Tópicos (visualizáveis como entidades menores)
+  topicOrders: { x: 50, y: 25, label: 'orders', tag: 'Topic', size: 'small' },
+  topicStock: { x: 50, y: 55, label: 'stock-reserved', tag: 'Topic', size: 'small' },
+  topicPayment: { x: 50, y: 70, label: 'payment-success', tag: 'Topic', size: 'small' },
+  
+  // Coluna 4: Workers
+  inventory: { x: 72, y: 20, label: 'Inventory Worker', tag: 'Java' },
+  payment: { x: 72, y: 45, label: 'Payment Worker', tag: 'Clojure' },
+  projector: { x: 72, y: 70, label: 'Projector Worker', tag: 'Clojure' },
+  
+  // Coluna 5: Query Side
+  mongo: { x: 90, y: 70, label: 'MongoDB', tag: 'Read Model' },
+  query: { x: 90, y: 50, label: 'Query API', tag: 'Java' },
 }
 
 // Função para criar path curvo entre dois pontos
@@ -41,22 +56,37 @@ const createCurvedPath = (x1, y1, x2, y2) => {
 
 const createEdges = [
   { from: 'frontend', to: 'command', label: 'POST /products', eventName: 'ProductCreatedEvent' },
-  { from: 'command', to: 'kafka', label: 'ProductCreatedEvent', eventName: 'ProductCreatedEvent' },
-  { from: 'kafka', to: 'projector', label: 'Consume + Project', eventName: 'ProductCreatedEvent' },
-  { from: 'projector', to: 'mongo', label: 'Insert Read Model', eventName: 'ProductCreatedEvent' },
-  { from: 'mongo', to: 'query', label: 'Expose GET /products', eventName: 'ProductCreatedEvent' },
-  { from: 'query', to: 'client', label: 'React Query fetch', eventName: 'ProductCreatedEvent' },
+  { from: 'command', to: 'postgres', label: 'Persiste Evento', eventName: 'ProductCreatedEvent' },
+  { from: 'postgres', to: 'kafka', label: 'Publica Kafka', eventName: 'ProductCreatedEvent' },
+  { from: 'kafka', to: 'topicOrders', label: 'Topic orders', eventName: 'ProductCreatedEvent' },
+  { from: 'topicOrders', to: 'projector', label: 'Consume', eventName: 'ProductCreatedEvent' },
+  { from: 'projector', to: 'mongo', label: 'Projeta', eventName: 'ProductCreatedEvent' },
+  { from: 'mongo', to: 'query', label: 'Read Model', eventName: 'ProductCreatedEvent' },
+  { from: 'query', to: 'frontend', label: 'GET /products', eventName: 'ProductCreatedEvent' },
 ]
 
 const purchaseEdges = [
+  // 1. Frontend → Command → Postgres → Kafka
   { from: 'frontend', to: 'command', label: 'POST /orders', eventName: 'OrderCreatedEvent' },
-  { from: 'command', to: 'kafka', label: 'OrderCreatedEvent', eventName: 'OrderCreatedEvent' },
-  { from: 'kafka', to: 'inventory', label: 'StockReserved', eventName: 'StockReservedEvent' },
-  { from: 'inventory', to: 'payment', label: 'Debit wallet', eventName: 'PaymentProcessedEvent' },
-  { from: 'payment', to: 'projector', label: 'PaymentSuccess/Failed', eventName: 'PaymentSuccessEvent' },
-  { from: 'projector', to: 'mongo', label: 'Update Read Model', eventName: 'OrderUpdatedEvent' },
-  { from: 'mongo', to: 'query', label: 'Expose GET /orders', eventName: 'OrderUpdatedEvent' },
-  { from: 'query', to: 'client', label: 'React Query fetch', eventName: 'OrderUpdatedEvent' },
+  { from: 'command', to: 'postgres', label: 'Persiste', eventName: 'OrderCreatedEvent' },
+  { from: 'postgres', to: 'kafka', label: 'Publica', eventName: 'OrderCreatedEvent' },
+  
+  // 2. Kafka → Inventory Worker
+  { from: 'kafka', to: 'topicOrders', label: 'orders topic', eventName: 'OrderCreatedEvent' },
+  { from: 'topicOrders', to: 'inventory', label: 'Consume', eventName: 'OrderCreatedEvent' },
+  
+  // 3. Inventory → Payment (via Kafka)
+  { from: 'inventory', to: 'topicStock', label: 'Publica', eventName: 'StockReservedEvent' },
+  { from: 'topicStock', to: 'payment', label: 'Consume', eventName: 'StockReservedEvent' },
+  
+  // 4. Payment → Projector (via Kafka)
+  { from: 'payment', to: 'topicPayment', label: 'Publica', eventName: 'PaymentSuccessEvent' },
+  { from: 'topicPayment', to: 'projector', label: 'Consume', eventName: 'PaymentSuccessEvent' },
+  
+  // 5. Projector → MongoDB → Query → Frontend
+  { from: 'projector', to: 'mongo', label: 'Projeta', eventName: 'OrderUpdatedEvent' },
+  { from: 'mongo', to: 'query', label: 'Read Model', eventName: 'OrderUpdatedEvent' },
+  { from: 'query', to: 'frontend', label: 'GET /orders', eventName: 'OrderUpdatedEvent' },
 ]
 
 const fetchProducts = async () => {
@@ -81,8 +111,9 @@ function App() {
   const [form, setForm] = useState({ name: '', price: '', type: productTypes[0] })
   const [trace, setTrace] = useState(null)
   const [traceIndex, setTraceIndex] = useState(0)
-  const [activeAlerts, setActiveAlerts] = useState({})
+  const [activeAlerts, setActiveAlerts] = useState({}) // { nodeKey: [{ message, timestamp, id }] }
   const traceTimer = useRef(null)
+  const alertTimeouts = useRef({}) // Para gerenciar timeouts de remoção
   const activeEdges = role === 'admin' ? createEdges : purchaseEdges
 
   const { data: products = [], isLoading: loadingProducts } = useQuery({
@@ -105,28 +136,51 @@ function App() {
       setTrace(null)
       setTraceIndex(0)
       setActiveAlerts({})
+      // Limpar todos os timeouts pendentes
+      Object.values(alertTimeouts.current).forEach(timeout => clearTimeout(timeout))
+      alertTimeouts.current = {}
       return
     }
     
     const currentEdge = trace[traceIndex]
     if (currentEdge) {
-      // Mostrar alerta no nó de destino
-      setActiveAlerts((prev) => ({
-        ...prev,
-        [currentEdge.to]: {
-          message: `${currentEdge.eventName || currentEdge.label} consumido`,
-          timestamp: Date.now(),
-        },
-      }))
+      const nodeKey = currentEdge.to
+      const alertId = `${nodeKey}-${Date.now()}-${Math.random()}`
+      const newAlert = {
+        id: alertId,
+        message: `${currentEdge.eventName || currentEdge.label} consumido`,
+        timestamp: Date.now(),
+      }
       
-      // Remover alerta após 2 segundos
-      setTimeout(() => {
+      // Adicionar alerta à fila do nó (máximo 5 eventos por nó)
+      setActiveAlerts((prev) => {
+        const nodeAlerts = prev[nodeKey] || []
+        const updatedAlerts = [...nodeAlerts, newAlert].slice(-5) // Mantém apenas os últimos 5
+        return {
+          ...prev,
+          [nodeKey]: updatedAlerts,
+        }
+      })
+      
+      // Remover este alerta específico após 2.5 segundos
+      const timeoutId = setTimeout(() => {
         setActiveAlerts((prev) => {
-          const newAlerts = { ...prev }
-          delete newAlerts[currentEdge.to]
-          return newAlerts
+          const nodeAlerts = prev[nodeKey] || []
+          const filtered = nodeAlerts.filter(alert => alert.id !== alertId)
+          if (filtered.length === 0) {
+            const newAlerts = { ...prev }
+            delete newAlerts[nodeKey]
+            return newAlerts
+          }
+          return {
+            ...prev,
+            [nodeKey]: filtered,
+          }
         })
-      }, 2000)
+        delete alertTimeouts.current[alertId]
+      }, 2500)
+      
+      alertTimeouts.current[alertId] = timeoutId
     }
     
     traceTimer.current = setTimeout(() => setTraceIndex((prev) => prev + 1), 800)
@@ -137,6 +191,9 @@ function App() {
     setTrace(edges)
     setTraceIndex(0)
     setActiveAlerts({})
+    // Limpar todos os timeouts pendentes ao iniciar novo trace
+    Object.values(alertTimeouts.current).forEach(timeout => clearTimeout(timeout))
+    alertTimeouts.current = {}
   }
 
   const createProduct = useMutation({
@@ -228,6 +285,9 @@ function App() {
               setTrace(null)
               setTraceIndex(0)
               setActiveAlerts({})
+              // Limpar timeouts ao trocar de modo
+              Object.values(alertTimeouts.current).forEach(timeout => clearTimeout(timeout))
+              alertTimeouts.current = {}
             }}
             className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm"
           >
@@ -353,7 +413,7 @@ function App() {
               </div>
             </div>
 
-            <div className="relative h-[500px] rounded-xl bg-gradient-to-br from-white/5 to-black/20 border border-white/10 overflow-hidden">
+            <div className="relative h-[700px] rounded-xl bg-gradient-to-br from-white/5 to-black/20 border border-white/10 overflow-hidden">
               <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
                 <defs>
                   <linearGradient id="edgeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -425,8 +485,9 @@ function App() {
 
               {/* Renderizar nós com alertas */}
               {Object.entries(flowNodes).map(([key, node]) => {
-                const alert = activeAlerts[key]
+                const nodeAlerts = activeAlerts[key] || []
                 const isActive = animatePacket?.to === key
+                const isSmall = node.size === 'small'
                 
                 return (
                   <div key={key} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${node.x}%`, top: `${node.y}%` }}>
@@ -435,25 +496,25 @@ function App() {
                       animate={isActive ? { scale: 1.1 } : { scale: 1 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <div className="w-32 rounded-xl bg-white/10 border-2 border-white/20 p-2 text-center backdrop-blur-sm shadow-lg">
-                        <p className="text-xs text-slate-300 font-medium">{node.tag}</p>
-                        <p className="font-semibold text-sm text-white">{node.label}</p>
+                      <div className={clsx(
+                        "rounded-xl bg-white/10 border-2 border-white/20 p-2 text-center backdrop-blur-sm shadow-lg",
+                        isSmall ? "w-24 opacity-70" : "w-32"
+                      )}>
+                        <p className={clsx("text-slate-300 font-medium", isSmall ? "text-[10px]" : "text-xs")}>{node.tag}</p>
+                        <p className={clsx("font-semibold text-white", isSmall ? "text-xs" : "text-sm")}>{node.label}</p>
                       </div>
                       
-                      {/* Alerta quando evento é consumido */}
-                      <AnimatePresence>
-                        {alert && (
-                          <motion.div
-                            initial={{ opacity: 0, y: -10, scale: 0.8 }}
-                            animate={{ opacity: 1, y: -35, scale: 1 }}
-                            exit={{ opacity: 0, y: -20, scale: 0.8 }}
-                            className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1.5 rounded-lg bg-gradient-to-r from-accent-blue to-accent-purple text-xs font-semibold shadow-neon z-50"
-                          >
-                            {alert.message}
-                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-accent-purple"></div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                      {/* Badge de contagem de eventos ativos */}
+                      {nodeAlerts.length > 0 && !isSmall && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          exit={{ scale: 0 }}
+                          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-gradient-to-r from-accent-blue to-accent-purple flex items-center justify-center text-xs font-bold shadow-neon"
+                        >
+                          {nodeAlerts.length}
+                        </motion.div>
+                      )}
                     </motion.div>
                   </div>
                 )
@@ -488,26 +549,75 @@ function App() {
               </AnimatePresence>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              {activeEdges.map((edge, idx) => {
-                const isActive = animatePacket?.from === edge.from && animatePacket?.to === edge.to
-                return (
-                  <div
-                    key={idx}
-                    className={clsx(
-                      'rounded-xl border p-3 text-sm transition-all duration-300',
-                      isActive
-                        ? 'bg-white/15 border-accent-blue/80 shadow-lg shadow-accent-blue/20'
-                        : 'bg-white/5 border-white/10',
-                    )}
-                  >
-                    <p className="text-xs text-slate-400">{edge.label}</p>
-                    <p className="font-semibold text-xs mt-1">
-                      {edge.from} ➜ {edge.to}
-                    </p>
-                  </div>
-                )
-              })}
+            {/* Painel de eventos em tempo real */}
+            <div className="mt-4 rounded-xl bg-white/5 border border-white/10 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-slate-200">Eventos em Tempo Real</h4>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                  <span className="text-xs text-slate-400">Live</span>
+                </div>
+              </div>
+              
+              <div className="space-y-2 max-h-[180px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                {activeEdges.map((edge, idx) => {
+                  const isActive = animatePacket?.from === edge.from && animatePacket?.to === edge.to
+                  const nodeFrom = flowNodes[edge.from]
+                  const nodeTo = flowNodes[edge.to]
+                  const alertsFrom = (activeAlerts[edge.from] || []).length
+                  const alertsTo = (activeAlerts[edge.to] || []).length
+                  
+                  return (
+                    <motion.div
+                      key={idx}
+                      animate={{
+                        backgroundColor: isActive ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                        borderColor: isActive ? 'rgba(88, 166, 255, 0.8)' : 'rgba(255, 255, 255, 0.1)',
+                      }}
+                      className="rounded-lg border p-2 transition-all duration-300"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 flex-1">
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs font-medium text-white">{nodeFrom.label}</span>
+                            {alertsFrom > 0 && (
+                              <span className="w-4 h-4 rounded-full bg-accent-blue text-[10px] flex items-center justify-center font-bold">
+                                {alertsFrom}
+                              </span>
+                            )}
+                          </div>
+                          
+                          <motion.div
+                            animate={{
+                              x: isActive ? [0, 5, 0] : 0,
+                            }}
+                            transition={{
+                              duration: 0.6,
+                              repeat: isActive ? Infinity : 0,
+                            }}
+                            className="text-slate-400"
+                          >
+                            →
+                          </motion.div>
+                          
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs font-medium text-white">{nodeTo.label}</span>
+                            {alertsTo > 0 && (
+                              <span className="w-4 h-4 rounded-full bg-accent-purple text-[10px] flex items-center justify-center font-bold">
+                                {alertsTo}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="text-[10px] text-slate-400 px-2 py-0.5 rounded bg-white/5 truncate max-w-[120px]">
+                          {edge.label}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )
+                })}
+              </div>
             </div>
           </div>
 
