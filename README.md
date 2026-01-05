@@ -35,49 +35,19 @@
 - [Estrutura do Projeto](#-estrutura-do-projeto)
 - [Roadmap](#-roadmap)
 - [Autor](#-autor)
-<p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=28&duration=4000&pause=1000&color=58A6FF&center=true&vCenter=true&width=600&lines=%E2%98%AF%EF%B8%8F+Duality+Store;Event-Driven+Architecture;CQRS+%2B+Event+Sourcing" alt="Typing SVG" />
-</p>
-
-<p align="center">
-  <strong>Uma simulação de e-commerce distribuída explorando a dualidade entre consistência transacional e performance de leitura através de CQRS, Event Sourcing e Arquitetura Poliglota.</strong>
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Java-17-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java"/>
-  <img src="https://img.shields.io/badge/Clojure-1.11-5881D8?style=for-the-badge&logo=clojure&logoColor=white" alt="Clojure"/>
-  <img src="https://img.shields.io/badge/Spring_Boot-3.2-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white" alt="Spring Boot"/>
-  <img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React"/>
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Apache_Kafka-3.5-231F20?style=for-the-badge&logo=apache-kafka&logoColor=white" alt="Kafka"/>
-  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="Postgres"/>
-  <img src="https://img.shields.io/badge/MongoDB-6.0-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB"/>
-  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"/>
-</p>
 
 ---
 
-## 📋 Índice
-
-- [Sobre o Projeto](#-sobre-o-projeto)
-- [Arquitetura](#-arquitetura)
-- [Tecnologias](#%EF%B8%8F-tecnologias)
-- [Pré-requisitos](#-pré-requisitos)
-- [Instalação](#-instalação)
-- [Como Usar](#-como-usar)
-- [API Reference](#-api-reference)
-- [Fluxo de Eventos](#-fluxo-de-eventos)
-- [Estrutura do Projeto](#-estrutura-do-projeto)
-- [Roadmap](#-roadmap)
-- [Autor](#-autor)
-
----
 
 ## 🎯 Sobre o Projeto
 
 O **Duality Store** é um projeto educacional e demonstrativo que implementa uma arquitetura de microsserviços moderna usando padrões avançados de design distribuído. O nome "Duality" reflete os dois pilares fundamentais do sistema:
+
+## 🎬 Demonstração
+
+![Demo da Aplicação](demo.gif)
+
+> **Architecture Debugger em Tempo Real**: Visualize o fluxo de eventos percorrendo toda a arquitetura, desde a criação de produtos até o processamento assíncrono pelos workers e atualização das projeções no MongoDB.
 
 ### 🔄 Dualidade de Dados (CQRS)
 
