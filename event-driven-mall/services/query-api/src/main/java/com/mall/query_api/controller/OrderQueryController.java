@@ -46,7 +46,7 @@ public class OrderQueryController {
     public ResponseEntity<List<OrderDocument>> getOrdersByStatus(@PathVariable String status) {
         log.info("📖 [Query] Consultando pedidos com status: {}", status);
         return ResponseEntity.ok(orderRepository.findByStatus(status));
-    }
+    } 
 }
 
 

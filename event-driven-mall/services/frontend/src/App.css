@@ -46,3 +46,32 @@
   stroke-width: 0.4px;
   text-shadow: 0 0 4px rgba(88, 166, 255, 0.5);
 }
+
+/* Estilos para alertas empilhados */
+.alert-stack {
+  pointer-events: none;
+}
+
+.alert-item {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* Scrollbar personalizada */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}

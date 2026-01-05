@@ -2,6 +2,12 @@
 
 Arquitetura Event-Driven com **CQRS** e **Event Sourcing** usando Kafka, PostgreSQL e MongoDB.
 
+## 🎬 Demonstração
+
+![Demo da Aplicação](demo.gif)
+
+> **Architecture Debugger em Tempo Real**: Visualize o fluxo de eventos percorrendo toda a arquitetura, desde a criação de produtos até o processamento assíncrono pelos workers e atualização das projeções no MongoDB.
+
 ## 📐 Arquitetura
 
 ```
